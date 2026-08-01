@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>API Tester - Spring Boot Backend</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --border:#2a2f3a; --text:#e6e8ec;
+    --muted:#8b93a3; --accent:#4f8cff; --ok:#3ecf8e; --err:#ff5d5d;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--text); padding:20px;
+  }
+  h1{font-size:20px; margin:0 0 4px;}
+  .sub{color:var(--muted); font-size:13px; margin-bottom:16px;}
+  .topbar{
+    display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+    background:var(--panel); border:1px solid var(--border); border-radius:8px;
+    padding:12px; margin-bottom:20px;
+  }
+  .topbar input{flex:1; min-width:200px;}
+  .token-box{display:flex; gap:6px; align-items:center; font-size:12px; color:var(--muted);}
+  .token-box span{max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ok);}
+  input, textarea, select{
+    background:#0c0e12; border:1px solid var(--border); color:var(--text);
+    border-radius:6px; padding:8px 10px; font-size:13px; font-family:inherit;
+  }
+  textarea{width:100%; font-family:Consolas,Menlo,monospace; font-size:12.5px; resize:vertical;}
+  button{
+    background:var(--accent); color:white; border:none; border-radius:6px;
+    padding:8px 14px; font-size:13px; cursor:pointer; font-weight:600;
+  }
+  button:hover{opacity:.9;}
+  button.secondary{background:#2a2f3a;}
+  button.danger{background:var(--err);}
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media(max-width:900px){.grid{grid-template-columns:1fr;}}
+  .card{
+    background:var(--panel); border:1px solid var(--border); border-radius:10px;
+    padding:16px; margin-bottom:16px;
+  }
+  .card h2{font-size:15px; margin:0 0 10px; display:flex; align-items:center; gap:8px;}
+  .badge{
+    font-size:11px; padding:2px 7px; border-radius:4px; font-weight:700;
+  }
+  .badge.get{background:#1c3a5e; color:#7ab8ff;}
+  .badge.post{background:#1c4d34; color:#5fe0a0;}
+  .badge.put{background:#4d3d1c; color:#e0c05f;}
+  .badge.delete{background:#4d1c1c; color:#ff8f8f;}
+  .row{display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap;}
+  .row input{flex:1; min-width:100px;}
+  label{font-size:11px; color:var(--muted); display:block; margin-bottom:3px;}
+  .field{flex:1; min-width:110px;}
+  .actions{display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;}
+  .resp{
+    margin-top:10px; background:#0c0e12; border:1px solid var(--border); border-radius:6px;
+    padding:10px; font-family:Consolas,Menlo,monospace; font-size:12px; white-space:pre-wrap;
+    word-break:break-all; max-height:320px; overflow:auto;
+  }
+  .status{font-weight:700; margin-right:6px;}
+  .status.ok{color:var(--ok);}
+  .status.err{color:var(--err);}
+  details{margin-top:6px;}
+  summary{cursor:pointer; color:var(--muted); font-size:12px;}
+  .full{grid-column:1 / -1;}
+  .hint{font-size:11px; color:var(--muted); margin-top:4px;}
+</style>
+</head>
+<body>
+
+<h1>Spring Boot API Tester</h1>
+<div class="sub">Talks directly to your backend. Edit JSON bodies inline if the real DTO field names differ.</div>
+
+<div class="topbar">
+  <div style="display:flex; flex-direction:column; gap:2px; min-width:260px;">
+    <label>Base URL</label>
+    <input id="baseUrl" value="http://localhost:8080" />
+  </div>
+  <div class="token-box">
+    JWT: <span id="tokenPreview">none</span>
+    <button class="secondary" onclick="clearToken()">Clear</button>
+  </div>
+</div>
+
+<div class="grid">
+
+  <!-- REGISTER -->
+  <div class="card">
+    <h2><span class="badge post">POST</span> /api/auth/register</h2>
+    <label>Request body (edit field names if needed)</label>
+    <textarea id="registerBody" rows="6">{
+  "username": "testuser1",
+  "email": "testuser1@example.com",
+  "password": "Password123!"
+}</textarea>
+    <div class="actions">
+      <button onclick="callApi('registerBody','registerResp','POST','/api/auth/register', {auth:false, saveToken:true})">Send</button>
+    </div>
+    <div id="registerResp" class="resp">Response will appear here...</div>
+  </div>
+
+  <!-- LOGIN -->
+  <div class="card">
+    <h2><span class="badge post">POST</span> /api/auth/login</h2>
+    <label>Request body</label>
+    <textarea id="loginBody" rows="6">{
+  "username": "testuser1",
+  "password": "Password123!"
+}</textarea>
+    <div class="hint">If backend uses "email" instead of "username", just edit the key above.</div>
+    <div class="actions">
+      <button onclick="callApi('loginBody','loginResp','POST','/api/auth/login', {auth:false, saveToken:true})">Send</button>
+    </div>
+    <div id="loginResp" class="resp">Response will appear here...</div>
+  </div>
+
+  <!-- CATEGORIES -->
+  <div class="card">
+    <h2><span class="badge get">GET</span> /api/categories</h2>
+    <div class="actions">
+      <button onclick="callApi(null,'catListResp','GET','/api/categories')">Fetch categories</button>
+    </div>
+    <div id="catListResp" class="resp">Response will appear here...</div>
+
+    <h2 style="margin-top:16px;"><span class="badge post">POST</span> /api/categories</h2>
+    <textarea id="catCreateBody" rows="4">{
+  "name": "Electronics"
+}</textarea>
+    <div class="actions">
+      <button onclick="callApi('catCreateBody','catCreateResp','POST','/api/categories')">Create category</button>
+    </div>
+    <div id="catCreateResp" class="resp">Response will appear here...</div>
+  </div>
+
+  <!-- PRODUCTS BROWSE -->
+  <div class="card">
+    <h2><span class="badge get">GET</span> /api/products (filter/browse)</h2>
+    <div class="row">
+      <div class="field"><label>categoryId</label><input id="p_categoryId" placeholder="e.g. 1"></div>
+      <div class="field"><label>keyword</label><input id="p_keyword" placeholder="e.g. phone"></div>
+      <div class="field"><label>minPrice</label><input id="p_minPrice" placeholder="e.g. 100"></div>
+      <div class="field"><label>maxPrice</label><input id="p_maxPrice" placeholder="e.g. 1000"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>page</label><input id="p_page" value="0"></div>
+      <div class="field"><label>size</label><input id="p_size" value="10"></div>
+      <div class="field"><label>sort</label><input id="p_sort" placeholder="e.g. price,asc"></div>
+    </div>
+    <div class="actions">
+      <button onclick="fetchProducts()">Fetch products</button>
+    </div>
+    <div id="productsResp" class="resp">Response will appear here...</div>
+  </div>
+
+  <!-- PRODUCT BY ID / CREATE / UPDATE / DELETE -->
+  <div class="card">
+    <h2><span class="badge get">GET</span> /api/products/{id}</h2>
+    <div class="row">
+      <input id="prodGetId" placeholder="Product ID" style="max-width:150px;">
+      <button onclick="callApi(null,'prodGetResp','GET', '/api/products/' + encodeURIComponent(document.getElementById('prodGetId').value))">Fetch</button>
+    </div>
+    <div id="prodGetResp" class="resp">Response will appear here...</div>
+
+    <h2 style="margin-top:16px;"><span class="badge post">POST</span> /api/products</h2>
+    <textarea id="prodCreateBody" rows="7">{
+  "name": "Sample Product",
+  "description": "A test product",
+  "price": 199.99,
+  "stockQuantity": 50,
+  "categoryId": 1
+}</textarea>
+    <div class="actions">
+      <button onclick="callApi('prodCreateBody','prodCreateResp','POST','/api/products')">Create</button>
+    </div>
+    <div id="prodCreateResp" class="resp">Response will appear here...</div>
+
+    <details>
+      <summary>Update / Delete product</summary>
+      <div class="row" style="margin-top:8px;">
+        <input id="prodUpdId" placeholder="Product ID to update/delete" style="max-width:220px;">
+      </div>
+      <textarea id="prodUpdateBody" rows="7">{
+  "name": "Updated Product",
+  "description": "Updated description",
+  "price": 149.99,
+  "stockQuantity": 30,
+  "categoryId": 1
+}</textarea>
+      <div class="actions">
+        <button onclick="callApi('prodUpdateBody','prodUpdResp','PUT', '/api/products/' + encodeURIComponent(document.getElementById('prodUpdId').value))">Update (PUT)</button>
+        <button class="danger" onclick="callApi(null,'prodUpdResp','DELETE', '/api/products/' + encodeURIComponent(document.getElementById('prodUpdId').value))">Delete</button>
+      </div>
+      <div id="prodUpdResp" class="resp">Response will appear here...</div>
+    </details>
+  </div>
+
+  <!-- CREATE ORDER -->
+  <div class="card">
+    <h2><span class="badge post">POST</span> /api/orders (requires JWT)</h2>
+    <label>Request body</label>
+    <textarea id="orderCreateBody" rows="8">{
+  "items": [
+    { "productId": 1, "quantity": 2 },
+    { "productId": 2, "quantity": 1 }
+  ]
+}</textarea>
+    <div class="hint">Field names guessed — adjust if backend expects e.g. "orderItems" instead of "items".</div>
+    <div class="actions">
+      <button onclick="callApi('orderCreateBody','orderCreateResp','POST','/api/orders', {auth:true})">Create order</button>
+    </div>
+    <div id="orderCreateResp" class="resp">Response will appear here...</div>
+  </div>
+
+  <!-- ORDER HISTORY / BY ID -->
+  <div class="card">
+    <h2><span class="badge get">GET</span> /api/orders/history (requires JWT)</h2>
+    <div class="row">
+      <div class="field"><label>page</label><input id="o_page" value="0"></div>
+      <div class="field"><label>size</label><input id="o_size" value="10"></div>
+    </div>
+    <div class="actions">
+      <button onclick="fetchOrderHistory()">Fetch history</button>
+    </div>
+    <div id="orderHistResp" class="resp">Response will appear here...</div>
+
+    <h2 style="margin-top:16px;"><span class="badge get">GET</span> /api/orders/{id} (requires JWT)</h2>
+    <div class="row">
+      <input id="orderGetId" placeholder="Order ID" style="max-width:150px;">
+      <button onclick="callApi(null,'orderGetResp','GET', '/api/orders/' + encodeURIComponent(document.getElementById('orderGetId').value), {auth:true})">Fetch</button>
+    </div>
+    <div id="orderGetResp" class="resp">Response will appear here...</div>
+  </div>
+
+  <!-- CART -->
+  <div class="card full">
+    <h2><span class="badge get">GET</span> /api/cart (requires JWT)</h2>
+    <div class="actions">
+      <button onclick="callApi(null,'cartGetResp','GET','/api/cart', {auth:true})">Fetch cart</button>
+    </div>
+    <div id="cartGetResp" class="resp">Response will appear here...</div>
+
+    <h2 style="margin-top:16px;"><span class="badge post">POST</span> /api/cart/items (requires JWT)</h2>
+    <textarea id="cartAddBody" rows="4">{
+  "productId": 1,
+  "quantity": 2
+}</textarea>
+    <div class="actions">
+      <button onclick="callApi('cartAddBody','cartAddResp','POST','/api/cart/items', {auth:true})">Add item</button>
+    </div>
+    <div id="cartAddResp" class="resp">Response will appear here...</div>
+
+    <h2 style="margin-top:16px;"><span class="badge put">PUT</span> /api/cart/items/{productId}?quantity=N (requires JWT)</h2>
+    <div class="row">
+      <div class="field"><label>productId</label><input id="cartUpdProdId" placeholder="e.g. 1"></div>
+      <div class="field"><label>quantity</label><input id="cartUpdQty" placeholder="e.g. 3"></div>
+    </div>
+    <div class="hint">Setting quantity to 0 removes the item (per CartServiceImpl logic).</div>
+    <div class="actions">
+      <button onclick="updateCartItem()">Update quantity</button>
+    </div>
+    <div id="cartUpdResp" class="resp">Response will appear here...</div>
+
+    <h2 style="margin-top:16px;"><span class="badge delete">DELETE</span> /api/cart/items/{productId} (requires JWT)</h2>
+    <div class="row">
+      <input id="cartRemProdId" placeholder="Product ID" style="max-width:150px;">
+      <button class="danger" onclick="callApi(null,'cartRemResp','DELETE', '/api/cart/items/' + encodeURIComponent(document.getElementById('cartRemProdId').value), {auth:true})">Remove item</button>
+    </div>
+    <div id="cartRemResp" class="resp">Response will appear here...</div>
+
+    <h2 style="margin-top:16px;"><span class="badge delete">DELETE</span> /api/cart (requires JWT)</h2>
+    <div class="actions">
+      <button class="danger" onclick="callApi(null,'cartClearResp','DELETE','/api/cart', {auth:true})">Clear cart</button>
+    </div>
+    <div id="cartClearResp" class="resp">Response will appear here...</div>
+
+    <h2 style="margin-top:16px;"><span class="badge post">POST</span> /api/cart/checkout (requires JWT)</h2>
+    <div class="hint">Converts current cart into an Order via the existing OrderService, then clears the cart.</div>
+    <div class="actions">
+      <button onclick="callApi(null,'cartCheckoutResp','POST','/api/cart/checkout', {auth:true})">Checkout</button>
+    </div>
+    <div id="cartCheckoutResp" class="resp">Response will appear here...</div>
+  </div>
+
+</div>
+
+<script>
+let jwtToken = null;
+
+function clearToken(){
+  jwtToken = null;
+  document.getElementById('tokenPreview').textContent = 'none';
+}
+
+function tryExtractToken(data){
+  if(!data || typeof data !== 'object') return null;
+  return data.token || data.accessToken || data.jwt || data.access_token || null;
+}
+
+function baseUrl(){
+  return document.getElementById('baseUrl').value.replace(/\/$/,'');
+}
+
+async function callApi(bodyElId, respElId, method, path, opts = {}){
+  const respEl = document.getElementById(respElId);
+  respEl.textContent = 'Loading...';
+  const useAuth = opts.auth !== false; // default true unless explicitly false
+  const headers = { 'Content-Type': 'application/json' };
+  if(useAuth && jwtToken){
+    headers['Authorization'] = 'Bearer ' + jwtToken;
+  }
+
+  let bodyStr = undefined;
+  if(bodyElId){
+    const raw = document.getElementById(bodyElId).value;
+    try{
+      JSON.parse(raw); // validate
+      bodyStr = raw;
+    }catch(e){
+      respEl.innerHTML = '<span class="status err">JSON PARSE ERROR</span> ' + e.message;
+      return;
+    }
+  }
+
+  try{
+    const res = await fetch(baseUrl() + path, {
+      method,
+      headers,
+      body: (method === 'GET' || method === 'DELETE') ? undefined : bodyStr
+    });
+
+    let text = await res.text();
+    let pretty = text;
+    let parsed = null;
+    try{ parsed = JSON.parse(text); pretty = JSON.stringify(parsed, null, 2); }catch(e){ /* not json */ }
+
+    const statusClass = res.ok ? 'ok' : 'err';
+    respEl.innerHTML = '<span class="status ' + statusClass + '">' + res.status + ' ' + res.statusText + '</span>\n' + (pretty || '(empty body)');
+
+    if(opts.saveToken && parsed){
+      const t = tryExtractToken(parsed);
+      if(t){
+        jwtToken = t;
+        document.getElementById('tokenPreview').textContent = t.slice(0,24) + '...';
+      }
+    }
+  }catch(err){
+    respEl.innerHTML = '<span class="status err">NETWORK ERROR</span>\n' + err.message + '\n\n(Check base URL, CORS config on backend, and that the server is running)';
+  }
+}
+
+function buildQuery(params){
+  const q = Object.entries(params)
+    .filter(([,v]) => v !== '' && v !== null && v !== undefined)
+    .map(([k,v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v))
+    .join('&');
+  return q ? ('?' + q) : '';
+}
+
+function fetchProducts(){
+  const q = buildQuery({
+    categoryId: document.getElementById('p_categoryId').value,
+    keyword: document.getElementById('p_keyword').value,
+    minPrice: document.getElementById('p_minPrice').value,
+    maxPrice: document.getElementById('p_maxPrice').value,
+    page: document.getElementById('p_page').value,
+    size: document.getElementById('p_size').value,
+    sort: document.getElementById('p_sort').value
+  });
+  callApi(null, 'productsResp', 'GET', '/api/products' + q, {auth:false});
+}
+
+function fetchOrderHistory(){
+  const q = buildQuery({
+    page: document.getElementById('o_page').value,
+    size: document.getElementById('o_size').value
+  });
+  callApi(null, 'orderHistResp', 'GET', '/api/orders/history' + q, {auth:true});
+}
+
+function updateCartItem(){
+  const productId = document.getElementById('cartUpdProdId').value;
+  const quantity = document.getElementById('cartUpdQty').value;
+  const q = buildQuery({ quantity });
+  callApi(null, 'cartUpdResp', 'PUT', '/api/cart/items/' + encodeURIComponent(productId) + q, {auth:true});
+}
+</script>
+
+</body>
+</html>

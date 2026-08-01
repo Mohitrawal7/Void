@@ -11,6 +11,7 @@ import com.example.demo.repository.OrderRepository;
 import com.example.demo.repository.ProductRepository;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.service.OrderService;
+import com.example.demo.service.cache.ProductCacheService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,6 +28,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final ProductCacheService productCacheService;
 
     @Override
     @Transactional
@@ -52,6 +54,7 @@ public class OrderServiceImpl implements OrderService {
             // decrement stock
             product.setStockQuantity(product.getStockQuantity() - itemReq.getQuantity());
             productRepository.save(product);
+            productCacheService.invalidateProduct(product.getId());   // <-- add this line
 
             OrderItem orderItem = OrderItem.builder()
                     .product(product)
