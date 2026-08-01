@@ -11,8 +11,8 @@ import java.util.List;
 
 public interface ProductService {
 
-    Page<ProductDto> getProducts(Long categoryId, String keyword, BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable);
-
+//    Page<ProductDto> getProducts(Long categoryId, String keyword, BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable);
+      List<ProductDto> getProducts();
     ProductDto getProductById(Long id);
 
     ProductDto createProduct(ProductRequest request);

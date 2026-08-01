@@ -10,14 +10,16 @@ import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.CategoryRepository;
 import com.example.demo.repository.ProductRepository;
 import com.example.demo.service.ProductService;
-import com.example.demo.service.spec.ProductSpecification;
+import com.example.demo.service.cache.ProductCacheService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -26,21 +28,58 @@ public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
+    private final ProductCacheService productCacheService;
+
+    @Value("${app.cache.product-list-ttl-seconds:120}")
+    private long listTtlSeconds;
+    @Value("${app.cache.product-item-ttl-seconds:600}")
+    private long itemTtlSeconds;
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ProductDto> getProducts(Long categoryId, String keyword, BigDecimal minPrice,
-                                         BigDecimal maxPrice, Pageable pageable) {
-        var spec = ProductSpecification.build(categoryId, keyword, minPrice, maxPrice);
-        return productRepository.findAll(spec, pageable).map(this::toDto);
+    @SuppressWarnings("unchecked")
+    public List<ProductDto> getProducts(){
+
+        String cacheKey = productCacheService.buildListKey();
+
+        List<ProductDto> cached = productCacheService.getList(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
+        List<ProductDto> result = productRepository.findAll().stream()
+                        .map(p -> ProductDto.builder()
+                                .id(p.getId())
+                                .name(p.getName())
+                                .price(p.getPrice())
+                                .categoryId(p.getCategory().getId())
+                                .categoryName(p.getCategory().getName())
+                                .description(p.getDescription())
+                                .createdAt(p.getCreatedAt())
+                                .imageUrl(p.getImageUrl())
+                                .stockQuantity(p.getStockQuantity())
+                                .build())
+                .toList();
+
+
+        productCacheService.putList(cacheKey, result, listTtlSeconds);
+        return result;
     }
 
     @Override
     @Transactional(readOnly = true)
     public ProductDto getProductById(Long id) {
+        ProductDto cached = productCacheService.getItem(id);
+        if (cached != null) {
+            return cached;
+        }
+
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
-        return toDto(product);
+
+        ProductDto dto = toDto(product);
+        productCacheService.putItem(id, dto, itemTtlSeconds);
+        return dto;
     }
 
     @Override
@@ -58,7 +97,9 @@ public class ProductServiceImpl implements ProductService {
                 .category(category)
                 .build();
 
-        return toDto(productRepository.save(product));
+        Product saved = productRepository.save(product);
+        productCacheService.invalidateProduct(saved.getId());
+        return toDto(saved);
     }
 
     @Override
@@ -77,7 +118,9 @@ public class ProductServiceImpl implements ProductService {
         product.setImageUrl(request.getImageUrl());
         product.setCategory(category);
 
-        return toDto(productRepository.save(product));
+        Product saved = productRepository.save(product);
+        productCacheService.invalidateProduct(saved.getId());
+        return toDto(saved);
     }
 
     @Override
@@ -87,15 +130,21 @@ public class ProductServiceImpl implements ProductService {
             throw new ResourceNotFoundException("Product not found with id: " + id);
         }
         productRepository.deleteById(id);
+        productCacheService.invalidateProduct(id);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<CategoryDto> getAllCategories() {
         return categoryRepository.findAll().stream()
-                .map(c -> CategoryDto.builder().id(c.getId()).name(c.getName()).description(c.getDescription()).build())
-                .toList();
-    }
+                .map(c -> CategoryDto.builder()
+                        .id(c.getId())
+                        .name(c.getName())
+                        .description(c.getDescription()).build())
+                        .toList();
+            }
+
+
 
     @Override
     @Transactional
