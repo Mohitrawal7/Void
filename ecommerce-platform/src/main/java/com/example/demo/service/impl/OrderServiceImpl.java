@@ -5,11 +5,14 @@ import com.example.demo.dto.order.OrderItemResponse;
 import com.example.demo.dto.order.OrderRequest;
 import com.example.demo.dto.order.OrderResponse;
 import com.example.demo.entity.*;
+import com.example.demo.event.OrderCreatedEvent;
+import com.example.demo.event.StockUpdatedEvent;
 import com.example.demo.exception.BadRequestException;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.repository.OrderRepository;
 import com.example.demo.repository.ProductRepository;
 import com.example.demo.repository.UserRepository;
+import com.example.demo.service.EventPublisherService;
 import com.example.demo.service.OrderService;
 import com.example.demo.service.cache.ProductCacheService;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +32,7 @@ public class OrderServiceImpl implements OrderService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final ProductCacheService productCacheService;
+    private final EventPublisherService eventPublisherService;
 
     @Override
     @Transactional
@@ -52,9 +56,21 @@ public class OrderServiceImpl implements OrderService {
             }
 
             // decrement stock
-            product.setStockQuantity(product.getStockQuantity() - itemReq.getQuantity());
+            int previousStock = product.getStockQuantity();
+            product.setStockQuantity(previousStock - itemReq.getQuantity());
             productRepository.save(product);
             productCacheService.invalidateProduct(product.getId());   // <-- add this line
+
+            //event publish
+            eventPublisherService.publishStockUpdated(
+                    StockUpdatedEvent.builder()
+                            .productId(product.getId())
+                            .productName(product.getName())
+                            .previousStock(previousStock)
+                            .newStock(product.getStockQuantity())
+                            .reason("ORDER_PLACED")
+                            .build()
+            );
 
             OrderItem orderItem = OrderItem.builder()
                     .product(product)
@@ -71,6 +87,24 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus(OrderStatus.CONFIRMED);
 
         Order saved = orderRepository.save(order);
+
+        eventPublisherService.publishOrderCreated(
+                OrderCreatedEvent.builder()
+                        .orderId(saved.getId())
+                        .username(username)
+                        .totalAmount(saved.getTotalAmount())
+                        .orderDate(saved.getOrderDate())
+                        .items(saved.getOrderItems().stream()
+                                .map(i -> OrderCreatedEvent.OrderItemEvent.builder()
+                                        .productId(i.getProduct().getId())
+                                        .productName(i.getProduct().getName())
+                                        .quantity(i.getQuantity())
+                                        .price(i.getPrice())
+                                        .build())
+                                .toList())
+                        .build()
+        );
+
         return toResponse(saved);
     }
 
