@@ -25,14 +25,7 @@ public class ProductController {
 
    @GetMapping("/products")
     public ResponseEntity<List<ProductDto>> getProducts(){
-//            @RequestParam(required = false) Long categoryId,
-//            @RequestParam(required = false) String keyword,
-//            @RequestParam(required = false) BigDecimal minPrice,
-//            @RequestParam(required = false) BigDecimal maxPrice,
-//            @PageableDefault(size = 10) Pageable pageable) {
-
-//        return ResponseEntity.ok(productService.getProducts(categoryId, keyword, minPrice, maxPrice, pageable));
-        return ResponseEntity.ok(productService.getProducts());
+     return ResponseEntity.ok(productService.getProducts());
     }
 
     @GetMapping("/products/{id}")
